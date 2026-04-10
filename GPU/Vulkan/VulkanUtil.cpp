@@ -42,6 +42,7 @@ const VkComponentMapping VULKAN_8888_SWIZZLE = { VK_COMPONENT_SWIZZLE_IDENTITY, 
 static const BindingType bindingTypes[] = {
 	BindingType::STORAGE_IMAGE_COMPUTE,
 	BindingType::STORAGE_BUFFER_COMPUTE,
+	BindingType::UNIFORM_BUFFER_COMPUTE,
 };
 
 VkPresentModeKHR ConfigPresentModeToVulkan(Draw::DrawContext *draw) {
@@ -121,6 +122,10 @@ void VulkanComputeShaderManager::InitDeviceObjects(Draw::DrawContext *draw) {
 	bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	bindings[1].binding = 1;
+	bindings[2].descriptorCount = 1;
+	bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;	
+	bindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	bindings[2].binding = 2;
 
 	VkDevice device = vulkan_->GetDevice();
 
@@ -171,7 +176,7 @@ void VulkanComputeShaderManager::DestroyDeviceObjects() {
 	}
 }
 
-VkDescriptorSet VulkanComputeShaderManager::GetDescriptorSet(VkImageView image, VkBuffer buffer, VkDeviceSize bufferOffset, VkDeviceSize bufferRange) {
+VkDescriptorSet VulkanComputeShaderManager::GetDescriptorSet(VkImageView image, VkBuffer buffer, VkDeviceSize bufferOffset, VkDeviceSize bufferRange, VkBuffer cbuffer, VkDeviceSize cbufferSize) {
 	int curFrame = vulkan_->GetCurFrame();
 	FrameData &frameData = frameData_[curFrame];
 	frameData.descPoolUsed = true;
@@ -179,9 +184,9 @@ VkDescriptorSet VulkanComputeShaderManager::GetDescriptorSet(VkImageView image, 
 	frameData.descPool.Allocate(&desc, 1, &descriptorSetLayout_);
 	_assert_(desc != VK_NULL_HANDLE);
 
-	VkWriteDescriptorSet writes[2]{};
+	VkWriteDescriptorSet writes[3]{};
 	int n = 0;
-	VkDescriptorImageInfo imageInfo[2] = {};
+	VkDescriptorImageInfo imageInfo[1] = {};
 	VkDescriptorBufferInfo bufferInfo[2] = {};
 	if (image) {
 		imageInfo[0].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -204,6 +209,18 @@ VkDescriptorSet VulkanComputeShaderManager::GetDescriptorSet(VkImageView image, 
 		writes[n].pBufferInfo = &bufferInfo[0];
 		writes[n].descriptorCount = 1;
 		writes[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		writes[n].dstSet = desc;
+		n++;
+	}
+	if (cbuffer) {
+		bufferInfo[1].buffer = cbuffer;
+		bufferInfo[1].offset = 0;
+		bufferInfo[1].range = cbufferSize;
+		writes[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writes[n].dstBinding = 2;
+		writes[n].pBufferInfo = &bufferInfo[1];
+		writes[n].descriptorCount = 1;
+		writes[n].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		writes[n].dstSet = desc;
 		n++;
 	}
