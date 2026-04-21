@@ -212,6 +212,8 @@ void LoadPostShaderInfo(Draw::DrawContext *draw, const std::vector<Path> &direct
 					info.scaleFactor = 0;
 					section.Get("Name", &info.name);
 					section.Get("Scale", &info.scaleFactor);
+					bool hidden = false;
+					section.Get("Hidden", &info.hidden);
 					std::string cbufferFilename;
 					if (section.Get("ConstantBuffer", &cbufferFilename)) {
 						Path cbufferPath = path / cbufferFilename;
